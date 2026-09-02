@@ -75,6 +75,11 @@
   .suggest button:last-child { border-bottom: 0; }
   .suggest button small { display: block; color: #6b7690; font-size: 12.5px; margin-top: 2px; }
   .suggest button:hover, .suggest button:focus { background: #f2f5fb; }
+  .suggest .grp { padding: 7px 16px 3px; font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #8a93a8; background: #f7f8fb; }
+  .suggest button.savedItem { display: flex; align-items: center; gap: 8px; }
+  .suggest button.savedItem .chk { width: 14px; color: #1e4a8c; font-weight: 700; }
+  .suggest button.savedItem[aria-selected="true"] { background: #eef3fb; }
+  .suggest button.savedItem span small { margin-top: 1px; }
 
   .toolbar { display: flex; justify-content: space-between; align-items: center; margin: 0; }
   .toolbar:has(.status:empty) { display: none; }
@@ -166,29 +171,7 @@
   .chips button { border: 1px solid var(--line); background: var(--card); color: var(--fg); border-radius: 999px; padding: 7px 14px; font-size: 13.5px; cursor: pointer; }
 
   /* Saved locations */
-  .saved { display: flex; align-items: center; gap: 8px; margin: 8px 0 0; }
   .saved[hidden] { display: none; }
-  .saved { position: relative; }
-  .locPick {
-    display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: var(--card); color: var(--fg);
-    border-radius: 999px; padding: 7px 12px 7px 10px; font-size: 14px; font-weight: 600; cursor: pointer; max-width: 100%;
-  }
-  .locPick #locPickName { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .locPick .chev { color: var(--fg-dim); font-size: 12px; }
-  .locPick.unsaved { font-weight: 400; color: var(--fg-dim); }
-  .locMenu {
-    position: absolute; top: calc(100% + 6px); left: 0; z-index: 20; min-width: 220px; max-width: 100%;
-    background: #fff; color: #1a2540; border-radius: 14px; overflow: hidden; box-shadow: 0 12px 32px rgba(0,0,0,0.35);
-  }
-  .locMenu button {
-    display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; background: none; border: 0;
-    padding: 11px 14px; border-bottom: 1px solid #eef0f4; cursor: pointer; font-size: 15px;
-  }
-  .locMenu button:last-child { border-bottom: 0; }
-  .locMenu button[aria-selected="true"] { background: #eef3fb; font-weight: 600; }
-  .locMenu button .chk { width: 16px; color: #1e4a8c; }
-  .locMenu button small { display: block; font-size: 12px; color: #6b7690; font-weight: 400; }
-  .manageBtn { flex: 0 0 auto; border: 1px solid var(--line); background: var(--card); color: var(--fg); border-radius: 999px; width: 34px; height: 34px; cursor: pointer; font-size: 15px; }
   .placeRow { display: flex; align-items: center; justify-content: center; gap: 10px; }
   .saveBtn { border: 1px solid var(--line); background: var(--card); color: var(--fg); border-radius: 999px; padding: 5px 12px; font-size: 13px; cursor: pointer; }
   .saveBtn[data-saved="true"] { background: var(--accent); color: #3a2d00; border-color: var(--accent); }
@@ -237,12 +220,6 @@
   <div class="status" id="status" aria-live="polite"></div>
 </div>
 
-<div class="saved" id="savedBar" hidden>
-  <button type="button" class="locPick" id="locPick" aria-haspopup="listbox" aria-expanded="false">
-    <span class="pin">📍</span><span id="locPickName"></span><span class="chev">▾</span>
-  </button>
-  <div class="locMenu" id="locMenu" role="listbox" hidden></div>
-</div>
 
 <div id="empty" class="empty">
   <div class="big">🌤️</div>
@@ -703,32 +680,7 @@
     b.textContent = isSaved ? '★ Saved' : (saved.length >= MAX_SAVED ? `☆ Limit ${MAX_SAVED}` : '☆ Save');
     b.title = b.disabled ? `You already have ${MAX_SAVED} saved locations — remove one to add another.` : '';
   }
-  function renderChips() {
-    const bar = $('savedBar'), pick = $('locPick'), menu = $('locMenu');
-    bar.hidden = saved.length === 0;
-    if (bar.hidden) return;
-    const cur = loc ? placeKey(loc) : null;
-    const entry = saved.find(e => e.key === cur);
-    $('locPickName').textContent = entry ? entry.name : (loc ? `${loc.name} (not saved)` : 'Saved locations');
-    pick.classList.toggle('unsaved', !entry);
-    menu.innerHTML = saved.map(e =>
-      `<button type="button" role="option" data-key="${esc(e.key)}" aria-selected="${e.key === cur}">
-        <span class="chk">${e.key === cur ? '✓' : ''}</span>
-        <span>${esc(e.name)}${e.name !== e.place.name ? `<small>${esc(e.place.label || e.place.name)}</small>` : ''}</span>
-      </button>`).join('');
-    menu.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
-      closeLocMenu();
-      const e = saved.find(x => x.key === b.dataset.key);
-      if (!e || (loc && placeKey(loc) === e.key)) return;
-      q.value = e.place.label || e.place.name;
-      loadForecast(e.place);
-    }));
-  }
-  function openLocMenu() { $('locMenu').hidden = false; $('locPick').setAttribute('aria-expanded', 'true'); }
-  function closeLocMenu() { $('locMenu').hidden = true; $('locPick').setAttribute('aria-expanded', 'false'); }
-  $('locPick').addEventListener('click', e => { e.stopPropagation(); $('locMenu').hidden ? openLocMenu() : closeLocMenu(); });
-  document.addEventListener('click', e => { if (!e.target.closest('#savedBar')) closeLocMenu(); });
-  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLocMenu(); });
+  function renderChips() { /* saved locations now live in the search dropdown */ }
   $('saveBtn').addEventListener('click', () => {
     if (!loc) return;
     const key = placeKey(loc);
@@ -796,14 +748,35 @@
   const q = $('q'), suggest = $('suggest');
   let debounce = null, seq = 0;
 
-  function showSuggestions(list) {
-    if (!list.length) { suggest.hidden = true; suggest.innerHTML = ''; return; }
-    suggest.innerHTML = list.map((r, i) =>
-      `<button type="button" data-i="${i}">${esc(r.label)}<small>${r.lat.toFixed(2)}, ${r.lon.toFixed(2)}</small></button>`).join('');
+  function savedMatches(v) {
+    v = v.trim().toLowerCase();
+    return saved.filter(e => !v || e.name.toLowerCase().includes(v) || (e.place.label || e.place.name).toLowerCase().includes(v));
+  }
+  function showSuggestions(savedList, geoList) {
+    if (!savedList.length && !geoList.length) { suggest.hidden = true; suggest.innerHTML = ''; return; }
+    const cur = loc ? placeKey(loc) : null;
+    let html = '';
+    if (savedList.length) {
+      html += '<div class="grp">Saved</div>' + savedList.map(e =>
+        `<button type="button" class="savedItem" data-saved="${esc(e.key)}" aria-selected="${e.key === cur}"><span class="chk">${e.key === cur ? '✓' : ''}</span><span>${esc(e.name)}${e.name !== e.place.name ? `<small>${esc(e.place.label || e.place.name)}</small>` : ''}</span></button>`).join('');
+    }
+    if (geoList.length) {
+      html += '<div class="grp">Search results</div>' + geoList.map((r, i) =>
+        `<button type="button" data-i="${i}">${esc(r.label)}<small>${r.lat.toFixed(2)}, ${r.lon.toFixed(2)}</small></button>`).join('');
+    }
+    suggest.innerHTML = html;
     suggest.hidden = false;
     suggest.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
-      choose(list[+b.dataset.i]);
+      if (b.dataset.saved) { const e = saved.find(x => x.key === b.dataset.saved); if (e) chooseSaved(e); }
+      else choose(geoList[+b.dataset.i]);
     }));
+  }
+  function chooseSaved(e) {
+    suggest.hidden = true;
+    q.value = e.place.label || e.place.name;
+    q.blur();
+    if (loc && placeKey(loc) === e.key) return;
+    loadForecast(e.place);
   }
   function choose(place) {
     suggest.hidden = true;
@@ -812,15 +785,19 @@
     loadForecast(place);
   }
 
+  // Focus: show saved locations right away (priority order); typing filters them and searches the web for the rest
+  q.addEventListener('focus', () => { q.select(); if (saved.length) showSuggestions(savedMatches(''), []); });
   q.addEventListener('input', () => {
     clearTimeout(debounce);
     const v = q.value.trim();
-    if (v.length < 2) { suggest.hidden = true; return; }
+    const sm = savedMatches(v);
+    showSuggestions(v ? sm : (saved.length ? sm : []), []);
+    if (v.length < 2) return;
     debounce = setTimeout(async () => {
       const my = ++seq;
       try {
         const list = await geocode(v);
-        if (my === seq) showSuggestions(list);
+        if (my === seq) showSuggestions(savedMatches(q.value), list);
       } catch (e) { /* ignore while typing */ }
     }, 300);
   });
@@ -830,6 +807,8 @@
     clearTimeout(debounce); seq++;
     const v = q.value.trim();
     if (!v) return;
+    const sm = savedMatches(v);
+    if (sm.length) { chooseSaved(sm[0]); return; }
     setStatus('Searching…');
     try {
       const list = await geocode(v);
