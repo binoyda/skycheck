@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>SkyCheck</title>
-<meta name="description" content="Hourly and 10-day weather for any city or zip code, with local time.">
+<meta name="description" content="Hourly and 16-day weather for any city or zip code, with local time.">
 <meta name="theme-color" content="#1e4a8c">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
@@ -127,7 +127,7 @@
   .hour .daysep { font-size: 10px; color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 2px; min-height: 12px; }
 
   .daily { padding: 0 16px; }
-  .day { display: grid; grid-template-columns: 74px 30px 44px 1fr 44px; align-items: center; gap: 8px; padding: 10px 0; border-top: 1px solid var(--line); }
+  .day { display: grid; grid-template-columns: 70px 30px 52px 1fr 44px; align-items: center; gap: 8px; padding: 10px 0; border-top: 1px solid var(--line); }
   .day:first-child { border-top: 0; }
   .day .d { font-size: 15px; font-weight: 500; }
   .day .d small { display: block; font-size: 11.5px; color: var(--fg-faint); font-weight: 400; }
@@ -151,6 +151,40 @@
   .chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 16px; }
   .chips button { border: 1px solid var(--line); background: var(--card); color: var(--fg); border-radius: 999px; padding: 7px 14px; font-size: 13.5px; cursor: pointer; }
 
+  /* Saved locations */
+  .saved { display: flex; align-items: center; gap: 8px; margin: 4px 0 2px; }
+  .saved[hidden] { display: none; }
+  .savedChips { display: flex; gap: 8px; overflow-x: auto; flex: 1; padding: 4px 2px; scrollbar-width: none; }
+  .savedChips::-webkit-scrollbar { display: none; }
+  .savedChips button {
+    flex: 0 0 auto; border: 1px solid var(--line); background: var(--card); color: var(--fg);
+    border-radius: 999px; padding: 7px 14px; font-size: 13.5px; cursor: pointer; white-space: nowrap; max-width: 160px;
+    overflow: hidden; text-overflow: ellipsis;
+  }
+  .savedChips button[aria-current="true"] { background: var(--fg); color: #1e3a6e; border-color: var(--fg); font-weight: 600; }
+  .manageBtn { flex: 0 0 auto; border: 1px solid var(--line); background: var(--card); color: var(--fg); border-radius: 999px; width: 34px; height: 34px; cursor: pointer; font-size: 15px; }
+  .placeRow { display: flex; align-items: center; justify-content: center; gap: 10px; }
+  .saveBtn { border: 1px solid var(--line); background: var(--card); color: var(--fg); border-radius: 999px; padding: 5px 12px; font-size: 13px; cursor: pointer; }
+  .saveBtn[data-saved="true"] { background: var(--accent); color: #3a2d00; border-color: var(--accent); }
+  .saveBtn:disabled { opacity: 0.5; cursor: default; }
+
+  /* Manage sheet */
+  .sheetWrap { position: fixed; inset: 0; z-index: 50; background: rgba(0,0,0,0.5); display: flex; align-items: flex-end; justify-content: center; }
+  .sheet { background: #fff; color: #1a2540; width: 100%; max-width: 640px; border-radius: 22px 22px 0 0; padding: 16px 16px calc(var(--safe-bottom) + 16px); max-height: 85vh; overflow-y: auto; box-shadow: 0 -12px 40px rgba(0,0,0,0.4); }
+  .sheet h3 { position: sticky; top: -16px; background: #fff; padding: 4px 0; margin: -4px 0 4px; font-size: 18px; display: flex; justify-content: space-between; align-items: center; }
+  .sheet h3 small { font-size: 12.5px; color: #6b7690; font-weight: 400; }
+  .sheet p.hint { margin: 0 0 12px; font-size: 13px; color: #6b7690; }
+  .row { display: grid; grid-template-columns: 1fr auto auto auto; gap: 6px; align-items: center; padding: 8px 0; border-top: 1px solid #eef0f4; }
+  .row:first-of-type { border-top: 0; }
+  .row input { border: 1px solid #d5dae6; border-radius: 10px; padding: 9px 12px; font-size: 15px; min-width: 0; width: 100%; background: #f7f8fb; }
+  .row input:focus { outline: 2px solid #4a86d6; border-color: transparent; }
+  .row small { display: block; font-size: 11.5px; color: #6b7690; margin-top: 3px; padding-left: 2px; }
+  .row .ib { border: 1px solid #d5dae6; background: #fff; border-radius: 10px; width: 38px; height: 38px; font-size: 16px; cursor: pointer; color: #1a2540; }
+  .row .ib:disabled { opacity: 0.3; cursor: default; }
+  .row .ib.del { color: #c2313b; }
+  .sheet .done { display: block; width: 100%; margin-top: 14px; border: 0; border-radius: 12px; padding: 13px; background: #1e4a8c; color: #fff; font-weight: 600; font-size: 16px; cursor: pointer; }
+  .sheet .emptyMsg { text-align: center; color: #6b7690; padding: 24px 0; }
+
   .skeleton { animation: pulse 1.2s ease-in-out infinite; opacity: 0.6; }
   @keyframes pulse { 50% { opacity: 0.3; } }
   [hidden] { display: none !important; }
@@ -172,6 +206,11 @@
   </div>
 </div>
 
+<div class="saved" id="savedBar" hidden>
+  <div class="savedChips" id="savedChips" role="tablist" aria-label="Saved locations"></div>
+  <button type="button" class="manageBtn" id="manageBtn" aria-label="Edit saved locations" title="Edit saved locations">✎</button>
+</div>
+
 <div id="empty" class="empty">
   <div class="big">🌤️</div>
   <p><strong>Check the weather anywhere.</strong></p>
@@ -187,7 +226,10 @@
 
 <main id="app" hidden>
   <div class="hero">
-    <div class="place" id="place"></div>
+    <div class="placeRow">
+      <div class="place" id="place"></div>
+      <button type="button" class="saveBtn" id="saveBtn" data-saved="false">☆ Save</button>
+    </div>
     <div class="clock">
       <div class="time" id="clockTime"></div>
       <div class="date" id="clockDate"></div>
@@ -213,7 +255,7 @@
   </section>
 
   <section class="card">
-    <h2>📅 10-day forecast</h2>
+    <h2>📅 16-day forecast</h2>
     <div class="daily" id="daily"></div>
   </section>
 
@@ -227,6 +269,15 @@
   </section>
 </main>
 
+<div class="sheetWrap" id="sheetWrap" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+    <h3 id="sheetTitle">Saved locations <small id="sheetCount"></small></h3>
+    <p class="hint">Rename, reorder, or remove. Changes save automatically.</p>
+    <div id="sheetList"></div>
+    <button type="button" class="done" id="sheetDone">Done</button>
+  </div>
+</div>
+
 <footer>Data by <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> · <span id="updated"></span></footer>
 
 <script>
@@ -237,7 +288,8 @@
   const GEO_URL = 'https://geocoding-api.open-meteo.com/v1/search';
   const ZIP_URL = 'https://api.zippopotam.us';
   const WX_URL  = 'https://api.open-meteo.com/v1/forecast';
-  const FORECAST_DAYS = 10;
+  const FORECAST_DAYS = 16;   // Open-Meteo maximum
+  const MAX_SAVED = 10;
 
   // WMO weather codes → label, day icon, night icon, theme class
   const WMO = {
@@ -282,6 +334,10 @@
   let data = null;       // last forecast payload (metric)
   let loc = null;        // {name, admin, country, lat, lon}
   let clockTimer = null;
+  let saved = [];        // [{key, name, place}]
+  try { saved = JSON.parse(localStorage.getItem('savedPlaces') || '[]'); if (!Array.isArray(saved)) saved = []; } catch (e) {}
+  const placeKey = p => `${(+p.lat).toFixed(3)},${(+p.lon).toFixed(3)}`;
+  const persistSaved = () => { try { localStorage.setItem('savedPlaces', JSON.stringify(saved)); } catch (e) {} };
 
   // ---------- Helpers ----------
   const cToUnit = c => unit === 'F' ? c * 9 / 5 + 32 : c;
@@ -391,7 +447,12 @@
     const w = wmo(cur.weather_code, cur.is_day);
     document.body.className = cur.is_day ? w.theme : 'night';
 
-    $('place').innerHTML = `${esc(loc.name)}<small>${esc([loc.admin, loc.country].filter(Boolean).join(', '))}</small>`;
+    const entry = saved.find(e => e.key === placeKey(loc));
+    const title = entry && entry.name ? entry.name : loc.name;
+    const sub = [entry && entry.name !== loc.name ? loc.name : '', loc.admin, loc.country].filter(Boolean).join(', ');
+    $('place').innerHTML = `${esc(title)}<small>${esc(sub)}</small>`;
+    updateSaveBtn();
+    renderChips();
     $('nowIcon').textContent = w.icon;
     $('nowTemp').innerHTML = `${Math.round(cToUnit(cur.temperature_2m))}<sup>°${unit}</sup>`;
     $('nowCond').textContent = w.label;
@@ -498,6 +559,82 @@
 
   const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
+  // ---------- Saved locations ----------
+  function updateSaveBtn() {
+    const b = $('saveBtn');
+    if (!loc) return;
+    const isSaved = saved.some(e => e.key === placeKey(loc));
+    b.dataset.saved = isSaved;
+    b.disabled = !isSaved && saved.length >= MAX_SAVED;
+    b.textContent = isSaved ? '★ Saved' : (saved.length >= MAX_SAVED ? `☆ Limit ${MAX_SAVED}` : '☆ Save');
+    b.title = b.disabled ? `You already have ${MAX_SAVED} saved locations — remove one to add another.` : '';
+  }
+  function renderChips() {
+    const bar = $('savedBar'), chips = $('savedChips');
+    bar.hidden = saved.length === 0;
+    const cur = loc ? placeKey(loc) : null;
+    chips.innerHTML = saved.map(e =>
+      `<button type="button" role="tab" data-key="${esc(e.key)}" aria-current="${e.key === cur}" title="${esc(e.place.label || e.place.name)}">${esc(e.name)}</button>`).join('');
+    chips.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+      const e = saved.find(x => x.key === b.dataset.key);
+      if (!e) return;
+      if (loc && placeKey(loc) === e.key) return;
+      q.value = e.place.label || e.place.name;
+      loadForecast(e.place);
+    }));
+    const active = chips.querySelector('[aria-current="true"]');
+    if (active && active.scrollIntoView) active.scrollIntoView({ inline: 'nearest', block: 'nearest' });
+  }
+  $('saveBtn').addEventListener('click', () => {
+    if (!loc) return;
+    const key = placeKey(loc);
+    const i = saved.findIndex(e => e.key === key);
+    if (i >= 0) { saved.splice(i, 1); setStatus('Removed from saved locations'); }
+    else {
+      if (saved.length >= MAX_SAVED) { setStatus(`Limit is ${MAX_SAVED} saved locations`, true); return; }
+      const { name, admin, country, lat, lon, label } = loc;
+      saved.push({ key, name: loc.name, place: { name, admin, country, lat, lon, label } });
+      setStatus('Saved');
+    }
+    persistSaved(); updateSaveBtn(); renderChips(); render();
+    setTimeout(() => setStatus(''), 1500);
+  });
+
+  // Manage sheet
+  const sheetWrap = $('sheetWrap');
+  function openSheet() { renderSheet(); sheetWrap.hidden = false; sheetWrap.querySelector('.sheet').scrollTop = 0; }
+  function closeSheet() { sheetWrap.hidden = true; persistSaved(); renderChips(); render(); }
+  function renderSheet() {
+    $('sheetCount').textContent = `${saved.length} of ${MAX_SAVED}`;
+    const list = $('sheetList');
+    if (!saved.length) { list.innerHTML = '<div class="emptyMsg">No saved locations yet.<br>Search a place and tap ☆ Save.</div>'; return; }
+    list.innerHTML = saved.map((e, i) => `<div class="row" data-i="${i}">
+        <div><input type="text" value="${esc(e.name)}" maxlength="40" aria-label="Name for ${esc(e.place.label || e.place.name)}"><small>${esc(e.place.label || e.place.name)}</small></div>
+        <button type="button" class="ib up" aria-label="Move up" ${i === 0 ? 'disabled' : ''}>↑</button>
+        <button type="button" class="ib down" aria-label="Move down" ${i === saved.length - 1 ? 'disabled' : ''}>↓</button>
+        <button type="button" class="ib del" aria-label="Remove">🗑</button>
+      </div>`).join('');
+    list.querySelectorAll('.row').forEach(row => {
+      const i = +row.dataset.i;
+      const input = row.querySelector('input');
+      const commit = () => { const v = input.value.trim(); saved[i].name = v || saved[i].place.name; input.value = saved[i].name; persistSaved(); };
+      input.addEventListener('change', commit);
+      input.addEventListener('blur', commit);
+      input.addEventListener('keydown', ev => { if (ev.key === 'Enter') { ev.preventDefault(); input.blur(); } });
+      row.querySelector('.up').addEventListener('click', () => { commitAll(); [saved[i - 1], saved[i]] = [saved[i], saved[i - 1]]; persistSaved(); renderSheet(); });
+      row.querySelector('.down').addEventListener('click', () => { commitAll(); [saved[i + 1], saved[i]] = [saved[i], saved[i + 1]]; persistSaved(); renderSheet(); });
+      row.querySelector('.del').addEventListener('click', () => { commitAll(); saved.splice(i, 1); persistSaved(); renderSheet(); });
+    });
+    function commitAll() {
+      list.querySelectorAll('.row').forEach(r => { const j = +r.dataset.i, v = r.querySelector('input').value.trim(); saved[j].name = v || saved[j].place.name; });
+    }
+  }
+  $('manageBtn').addEventListener('click', openSheet);
+  $('sheetDone').addEventListener('click', closeSheet);
+  sheetWrap.addEventListener('click', e => { if (e.target === sheetWrap) closeSheet(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !sheetWrap.hidden) closeSheet(); });
+  renderChips();
+
   // ---------- Units ----------
   function setUnit(u) {
     unit = u;
@@ -576,6 +713,7 @@
   try {
     const last = JSON.parse(localStorage.getItem('lastPlace') || 'null');
     if (last && last.lat != null) { q.value = last.label || last.name; loadForecast(last); }
+    else if (saved.length) { q.value = saved[0].place.label || saved[0].place.name; loadForecast(saved[0].place); }
   } catch (e) {}
 
   // Service worker (offline app shell)

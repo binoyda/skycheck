@@ -1,6 +1,6 @@
 # SkyCheck — weather PWA
 
-Search any city or zip code and get current conditions, a 48‑hour hourly strip, a 10‑day forecast, sunrise/sunset, and a live clock in that location's local time. °F by default with a °C toggle. No API keys, no build step, no backend.
+Search any city or zip code and get current conditions, a 48‑hour hourly strip, a 16-day forecast, sunrise/sunset, and a live clock in that location's local time. °F by default with a °C toggle. Save up to 10 locations (☆ Save), switch between them with the chip bar, and rename / reorder / remove them with the ✎ button. No API keys, no build step, no backend.
 
 Files: `index.html` (the whole app), `manifest.json`, `sw.js` (offline app shell), `icon-192.png`, `icon-512.png`.
 

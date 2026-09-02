@@ -1,7 +1,7 @@
 {
   "name": "SkyCheck Weather",
   "short_name": "SkyCheck",
-  "description": "Hourly and 10-day weather for any city or zip code, with local time.",
+  "description": "Hourly and 16-day weather for any city or zip code, with local time.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
