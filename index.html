@@ -135,6 +135,15 @@
   .day .lo, .day .hi { font-size: 15px; font-variant-numeric: tabular-nums; }
   .day .lo { color: var(--fg-dim); text-align: right; }
   .day .hi { font-weight: 600; text-align: right; }
+  .day { cursor: pointer; }
+  .day .d small::after { content: ' ▾'; color: var(--fg-faint); }
+  .day[aria-expanded="true"] { border-bottom: 0; }
+  .day[aria-expanded="true"] .d small::after { content: ' ▴'; }
+  .dayHours { display: flex; overflow-x: auto; gap: 2px; padding: 4px 0 12px; margin: 0 -4px; scrollbar-width: none; background: rgba(0,0,0,0.12); border-radius: 12px; }
+  .dayHours::-webkit-scrollbar { display: none; }
+  .dayHours .hour { flex: 0 0 56px; }
+  .dayHours .hour.past { opacity: 0.45; }
+  .dayHours .hour.now { background: var(--card-strong); opacity: 1; }
   .bar { position: relative; height: 5px; border-radius: 3px; background: rgba(0,0,0,0.25); }
   .bar span { position: absolute; top: 0; bottom: 0; border-radius: 3px; background: linear-gradient(90deg, #6fc3ff, #ffd452, #ff8a5b); }
 
@@ -410,6 +419,7 @@
 
   // ---------- Forecast ----------
   async function loadForecast(place) {
+    if (!loc || placeKey(loc) !== placeKey(place)) expandedDay = null;
     loc = place;
     setStatus('Loading forecast…');
     $('empty').hidden = true;
@@ -497,6 +507,7 @@
     $('hourly').scrollLeft = 0;
   }
 
+  let expandedDay = null;   // date key of the expanded day, if any
   function renderDaily() {
     const d = data.daily;
     const n = Math.min(FORECAST_DAYS, d.time.length);
@@ -511,7 +522,8 @@
       const left = ((lo - allMin) / span * 100).toFixed(1);
       const width = Math.max((hi - lo) / span * 100, 4).toFixed(1);
       const pp = d.precipitation_probability_max[i];
-      html += `<div class="day">
+      const open = expandedDay === d.time[i];
+      html += `<div class="day" data-key="${d.time[i]}" role="button" tabindex="0" aria-expanded="${open}" title="Tap for hourly">
         <div class="d">${i === 0 ? 'Today' : DOW[t.dow]}<small>${MON[t.m - 1]} ${t.d}</small></div>
         <div class="i" title="${esc(ww.label)}">${ww.icon}</div>
         <div class="p">${pp >= 10 ? '💧' + pp + '%' : ''}</div>
@@ -521,8 +533,45 @@
         </div>
         <div class="hi">${fmtT(hi)}</div>
       </div>`;
+      if (open) html += `<div class="dayHours" id="dayHours">${dayHoursHtml(d.time[i])}</div>`;
     }
     $('daily').innerHTML = html;
+    $('daily').querySelectorAll('.day').forEach(el => {
+      const toggle = () => {
+        expandedDay = expandedDay === el.dataset.key ? null : el.dataset.key;
+        renderDaily();
+        if (expandedDay) {
+          const row = $('daily').querySelector(`.day[data-key="${expandedDay}"]`);
+          const strip = $('dayHours');
+          if (strip) { const now = strip.querySelector('.hour.now'); if (now) strip.scrollLeft = Math.max(0, now.offsetLeft - 8); }
+          if (row && row.scrollIntoView) row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        }
+      };
+      el.addEventListener('click', toggle);
+      el.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } });
+    });
+  }
+
+  // 24 hourly cells for one calendar day (local date key "YYYY-MM-DD")
+  function dayHoursHtml(key) {
+    const h = data.hourly;
+    const nowKey = data.current.time.slice(0, 13);
+    let html = '';
+    for (let i = 0; i < h.time.length; i++) {
+      if (!h.time[i].startsWith(key)) continue;
+      const t = parseLocal(h.time[i]);
+      const ww = wmo(h.weather_code[i], h.is_day[i]);
+      const hk = h.time[i].slice(0, 13);
+      const cls = hk === nowKey ? ' now' : (hk < nowKey ? ' past' : '');
+      const pp = h.precipitation_probability[i];
+      html += `<div class="hour${cls}">
+        <div class="h">${hk === nowKey ? 'Now' : hour12(t.hh)}</div>
+        <div class="i">${ww.icon}</div>
+        <div class="t">${h.temperature_2m[i] == null ? '–' : fmtT(h.temperature_2m[i])}</div>
+        <div class="p">${pp != null && pp >= 10 ? '💧' + pp + '%' : ''}</div>
+      </div>`;
+    }
+    return html || '<div class="hour"><div class="h">No hourly data</div></div>';
   }
 
   // ---------- Local clock ----------
