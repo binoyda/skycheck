@@ -1,5 +1,5 @@
 // SkyCheck service worker: cache the app shell, always go to the network for weather data.
-const CACHE = 'skycheck-v9';
+const CACHE = 'skycheck-v10';
 const SHELL = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {

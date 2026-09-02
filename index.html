@@ -95,12 +95,14 @@
   .clock .time span { font-size: 18px; font-weight: 400; margin-left: 4px; color: var(--fg-dim); }
   .clock .date { font-size: 14px; color: var(--fg-dim); margin-top: 6px; }
   .clock .tz { font-size: 12px; color: var(--fg-faint); margin-top: 2px; }
-  .nowrow { display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 14px; }
-  .nowrow .icon { font-size: 64px; line-height: 1; }
-  .nowrow .temp { font-size: 76px; font-weight: 200; letter-spacing: -0.04em; line-height: 1; font-variant-numeric: tabular-nums; }
-  .nowrow .temp sup { font-size: 28px; font-weight: 300; vertical-align: top; margin-top: 8px; display: inline-block; }
-  .cond { font-size: 17px; margin-top: 6px; }
-  .hilo { font-size: 14px; color: var(--fg-dim); margin-top: 4px; }
+  .nowrow { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 12px; }
+  .nowrow .icon { font-size: 56px; line-height: 1; }
+  .nowrow .temp { font-size: 68px; font-weight: 200; letter-spacing: -0.04em; line-height: 1; font-variant-numeric: tabular-nums; }
+  .nowrow .temp sup { font-size: 24px; font-weight: 300; vertical-align: top; margin-top: 8px; display: inline-block; }
+  .nowMeta { text-align: left; min-width: 0; }
+  .cond { font-size: 16px; font-weight: 500; line-height: 1.2; }
+  .hilo { font-size: 13.5px; color: var(--fg-dim); margin-top: 4px; white-space: nowrap; }
+  @media (max-width: 360px) { .nowrow .icon { font-size: 44px; } .nowrow .temp { font-size: 58px; } .cond { font-size: 14px; } }
 
   .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 18px; }
   .stat .s { font-size: 11px; margin-top: 2px; color: var(--fg-dim); }
@@ -245,9 +247,11 @@
     <div class="nowrow">
       <div class="icon" id="nowIcon"></div>
       <div class="temp" id="nowTemp"></div>
+      <div class="nowMeta">
+        <div class="cond" id="nowCond"></div>
+        <div class="hilo" id="nowHiLo"></div>
+      </div>
     </div>
-    <div class="cond" id="nowCond"></div>
-    <div class="hilo" id="nowHiLo"></div>
     <div class="stats">
       <div class="stat"><div class="k">Feels</div><div class="v" id="sFeels"></div></div>
       <div class="stat"><div class="k">Humidity</div><div class="v" id="sHum"></div></div>
