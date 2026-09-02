@@ -78,11 +78,13 @@
 
   .toolbar { display: flex; justify-content: space-between; align-items: center; margin: 0; }
   .toolbar:has(.status:empty) { display: none; }
-  .unitBtn {
+  .gearBtn {
     flex: 0 0 48px; border: 1px solid var(--line); border-radius: 14px; background: var(--card);
-    color: var(--fg); font-weight: 700; font-size: 15px; cursor: pointer; padding: 0;
+    color: var(--fg); cursor: pointer; padding: 0; display: flex; align-items: center; justify-content: center;
   }
-  .unitBtn:active { transform: scale(0.95); }
+  .gearBtn:active { transform: scale(0.95); }
+  .gearBtn svg { transition: transform 0.4s ease; }
+  .gearBtn:active svg { transform: rotate(60deg); }
   .status { font-size: 13px; color: var(--fg-dim); padding: 6px 2px 0; }
   .status.error { color: #ffb4a8; }
 
@@ -185,6 +187,14 @@
   .sheet { background: #fff; color: #1a2540; width: 100%; max-width: 640px; border-radius: 22px 22px 0 0; padding: 16px 16px calc(var(--safe-bottom) + 16px); max-height: 85vh; overflow-y: auto; box-shadow: 0 -12px 40px rgba(0,0,0,0.4); }
   .sheet h3 { position: sticky; top: -16px; background: #fff; padding: 4px 0; margin: -4px 0 4px; font-size: 18px; display: flex; justify-content: space-between; align-items: center; }
   .sheet h3 small { font-size: 12.5px; color: #6b7690; font-weight: 400; }
+  .setRow { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0 14px; border-bottom: 1px solid #eef0f4; margin-bottom: 8px; }
+  .setLabel { font-size: 15px; font-weight: 600; }
+  .setSub { font-size: 12px; color: #6b7690; margin-top: 2px; }
+  .seg { display: inline-flex; border: 1px solid #d5dae6; border-radius: 999px; overflow: hidden; background: #f7f8fb; flex: 0 0 auto; }
+  .seg button { border: 0; background: none; padding: 8px 16px; font-size: 14px; font-weight: 600; color: #6b7690; cursor: pointer; }
+  .seg button[aria-pressed="true"] { background: #1e4a8c; color: #fff; }
+  .setHead { margin: 6px 0 2px; font-size: 15px; font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
+  .setHead small { font-size: 12.5px; color: #6b7690; font-weight: 400; }
   .sheet p.hint { margin: 0 0 12px; font-size: 13px; color: #6b7690; }
   .row { display: grid; grid-template-columns: 1fr auto auto auto; gap: 6px; align-items: center; padding: 8px 0; border-top: 1px solid #eef0f4; }
   .row:first-of-type { border-top: 0; }
@@ -207,7 +217,7 @@
 <form class="search" id="searchForm" autocomplete="off">
   <input id="q" type="search" inputmode="search" placeholder="City name or zip code" aria-label="City or zip code" enterkeyhint="search">
   <button type="submit" aria-label="Search">Go</button>
-  <button type="button" class="unitBtn" id="unitBtn" aria-label="Toggle temperature unit" title="Tap to switch °F / °C">°F</button>
+  <button type="button" class="gearBtn" id="gearBtn" aria-label="Settings" title="Settings"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
   <div class="suggest" id="suggest" hidden></div>
 </form>
 
@@ -217,7 +227,6 @@
 
 <div class="saved" id="savedBar" hidden>
   <div class="savedChips" id="savedChips" role="tablist" aria-label="Saved locations"></div>
-  <button type="button" class="manageBtn" id="manageBtn" aria-label="Edit saved locations" title="Edit saved locations">✎</button>
 </div>
 
 <div id="empty" class="empty">
@@ -284,7 +293,15 @@
 
 <div class="sheetWrap" id="sheetWrap" hidden>
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
-    <h3 id="sheetTitle">Saved locations <small id="sheetCount"></small></h3>
+    <h3 id="sheetTitle">Settings</h3>
+    <div class="setRow">
+      <div><div class="setLabel">Temperature</div><div class="setSub">Also switches wind and visibility units</div></div>
+      <div class="seg" role="group" aria-label="Temperature unit">
+        <button type="button" id="segF" aria-pressed="true">°F</button>
+        <button type="button" id="segC" aria-pressed="false">°C</button>
+      </div>
+    </div>
+    <h4 class="setHead">Saved locations <small id="sheetCount"></small></h4>
     <p class="hint">Rename, reorder, or remove. Changes save automatically.</p>
     <div id="sheetList"></div>
     <button type="button" class="done" id="sheetDone">Done</button>
@@ -731,7 +748,7 @@
       list.querySelectorAll('.row').forEach(r => { const j = +r.dataset.i, v = r.querySelector('input').value.trim(); saved[j].name = v || saved[j].place.name; });
     }
   }
-  $('manageBtn').addEventListener('click', openSheet);
+  $('gearBtn').addEventListener('click', openSheet);
   $('sheetDone').addEventListener('click', closeSheet);
   sheetWrap.addEventListener('click', e => { if (e.target === sheetWrap) closeSheet(); });
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && !sheetWrap.hidden) closeSheet(); });
@@ -741,11 +758,14 @@
   function setUnit(u) {
     unit = u;
     try { localStorage.setItem('unit', u); } catch (e) {}
-    $('unitBtn').textContent = `°${u}`;
+    $('segF').setAttribute('aria-pressed', u === 'F');
+    $('segC').setAttribute('aria-pressed', u === 'C');
     render();
   }
-  $('unitBtn').addEventListener('click', () => setUnit(unit === 'F' ? 'C' : 'F'));
-  $('unitBtn').textContent = `°${unit}`;
+  $('segF').addEventListener('click', () => setUnit('F'));
+  $('segC').addEventListener('click', () => setUnit('C'));
+  $('segF').setAttribute('aria-pressed', unit === 'F');
+  $('segC').setAttribute('aria-pressed', unit === 'C');
 
   // ---------- Search UI ----------
   const q = $('q'), suggest = $('suggest');
