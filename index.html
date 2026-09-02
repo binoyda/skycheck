@@ -380,8 +380,20 @@
     el.classList.toggle('error', isErr);
   };
 
+  // Current local hour at the forecast location, as "YYYY-MM-DDTHH" — from the device clock, not the fetch time
+  function localNowKey() {
+    try {
+      const parts = new Intl.DateTimeFormat('en-CA', { timeZone: data.timezone, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', hourCycle: 'h23' }).formatToParts(new Date());
+      const g = t => parts.find(x => x.type === t).value;
+      return `${g('year')}-${g('month')}-${g('day')}T${g('hour')}`;
+    } catch (e) {
+      const x = new Date(Date.now() + (data.utc_offset_seconds || 0) * 1000);
+      return x.toISOString().slice(0, 13);
+    }
+  }
+
   const fetchJSON = async (url) => {
-    const r = await fetch(url);
+    const r = await fetch(url, { cache: 'no-store' });
     if (!r.ok) throw new Error(`Request failed (${r.status})`);
     return r.json();
   };
@@ -443,6 +455,7 @@
     });
     try {
       data = await fetchJSON(`${WX_URL}?${params}`);
+      lastLoad = Date.now(); lastHourKey = localNowKey();
       aqi = null;
       render();
       loadAqi(place);
@@ -474,7 +487,7 @@
   function currentVisibility() {
     const h = data.hourly;
     if (!h.visibility) return null;
-    const nowKey = data.current.time.slice(0, 13);
+    const nowKey = localNowKey();
     let i = h.time.findIndex(t => t.slice(0, 13) === nowKey);
     if (i < 0) i = 0;
     return h.visibility[i];
@@ -527,7 +540,7 @@
 
   function renderHourly() {
     const h = data.hourly;
-    const nowKey = data.current.time.slice(0, 13); // "YYYY-MM-DDTHH"
+    const nowKey = localNowKey();
     let start = h.time.findIndex(t => t.slice(0, 13) >= nowKey);
     if (start < 0) start = 0;
     const end = Math.min(start + 48, h.time.length);
@@ -599,7 +612,7 @@
   // 24 hourly cells for one calendar day (local date key "YYYY-MM-DD")
   function dayHoursHtml(key) {
     const h = data.hourly;
-    const nowKey = data.current.time.slice(0, 13);
+    const nowKey = localNowKey();
     let html = '';
     for (let i = 0; i < h.time.length; i++) {
       if (!h.time[i].startsWith(key)) continue;
@@ -787,13 +800,19 @@
     q.value = b.dataset.q; $('searchForm').requestSubmit();
   }));
 
-  // Refresh when app returns to foreground after 10+ minutes
-  let lastLoad = Date.now();
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible' && loc && Date.now() - lastLoad > 10 * 60 * 1000) {
-      lastLoad = Date.now(); loadForecast(loc);
-    }
-  });
+  // Keep data fresh: refetch when the app comes back to the foreground (or every 15 min while open)
+  // if the last load is older than 10 minutes; re-render the hourly strips when the local hour changes.
+  let lastLoad = 0, lastHourKey = null;
+  const STALE_MS = 10 * 60 * 1000;
+  function refreshIfStale() {
+    if (!loc) return;
+    if (Date.now() - lastLoad > STALE_MS) { loadForecast(loc); return; }
+    if (data && localNowKey() !== lastHourKey) { lastHourKey = localNowKey(); renderHourly(); renderDaily(); $('sVis').textContent = fmtVis(currentVisibility()); }
+  }
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') refreshIfStale(); });
+  window.addEventListener('focus', refreshIfStale);
+  window.addEventListener('pageshow', refreshIfStale);
+  setInterval(() => { if (document.visibilityState === 'visible') refreshIfStale(); }, 60 * 1000);
 
   // Restore last place
   try {
