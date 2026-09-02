@@ -168,14 +168,26 @@
   /* Saved locations */
   .saved { display: flex; align-items: center; gap: 8px; margin: 8px 0 0; }
   .saved[hidden] { display: none; }
-  .savedChips { display: flex; gap: 8px; overflow-x: auto; flex: 1; padding: 4px 2px; scrollbar-width: none; }
-  .savedChips::-webkit-scrollbar { display: none; }
-  .savedChips button {
-    flex: 0 0 auto; border: 1px solid var(--line); background: var(--card); color: var(--fg);
-    border-radius: 999px; padding: 7px 14px; font-size: 13.5px; cursor: pointer; white-space: nowrap; max-width: 160px;
-    overflow: hidden; text-overflow: ellipsis;
+  .saved { position: relative; }
+  .locPick {
+    display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: var(--card); color: var(--fg);
+    border-radius: 999px; padding: 7px 12px 7px 10px; font-size: 14px; font-weight: 600; cursor: pointer; max-width: 100%;
   }
-  .savedChips button[aria-current="true"] { background: var(--fg); color: #1e3a6e; border-color: var(--fg); font-weight: 600; }
+  .locPick #locPickName { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .locPick .chev { color: var(--fg-dim); font-size: 12px; }
+  .locPick.unsaved { font-weight: 400; color: var(--fg-dim); }
+  .locMenu {
+    position: absolute; top: calc(100% + 6px); left: 0; z-index: 20; min-width: 220px; max-width: 100%;
+    background: #fff; color: #1a2540; border-radius: 14px; overflow: hidden; box-shadow: 0 12px 32px rgba(0,0,0,0.35);
+  }
+  .locMenu button {
+    display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; background: none; border: 0;
+    padding: 11px 14px; border-bottom: 1px solid #eef0f4; cursor: pointer; font-size: 15px;
+  }
+  .locMenu button:last-child { border-bottom: 0; }
+  .locMenu button[aria-selected="true"] { background: #eef3fb; font-weight: 600; }
+  .locMenu button .chk { width: 16px; color: #1e4a8c; }
+  .locMenu button small { display: block; font-size: 12px; color: #6b7690; font-weight: 400; }
   .manageBtn { flex: 0 0 auto; border: 1px solid var(--line); background: var(--card); color: var(--fg); border-radius: 999px; width: 34px; height: 34px; cursor: pointer; font-size: 15px; }
   .placeRow { display: flex; align-items: center; justify-content: center; gap: 10px; }
   .saveBtn { border: 1px solid var(--line); background: var(--card); color: var(--fg); border-radius: 999px; padding: 5px 12px; font-size: 13px; cursor: pointer; }
@@ -226,7 +238,10 @@
 </div>
 
 <div class="saved" id="savedBar" hidden>
-  <div class="savedChips" id="savedChips" role="tablist" aria-label="Saved locations"></div>
+  <button type="button" class="locPick" id="locPick" aria-haspopup="listbox" aria-expanded="false">
+    <span class="pin">📍</span><span id="locPickName"></span><span class="chev">▾</span>
+  </button>
+  <div class="locMenu" id="locMenu" role="listbox" hidden></div>
 </div>
 
 <div id="empty" class="empty">
@@ -689,21 +704,31 @@
     b.title = b.disabled ? `You already have ${MAX_SAVED} saved locations — remove one to add another.` : '';
   }
   function renderChips() {
-    const bar = $('savedBar'), chips = $('savedChips');
+    const bar = $('savedBar'), pick = $('locPick'), menu = $('locMenu');
     bar.hidden = saved.length === 0;
+    if (bar.hidden) return;
     const cur = loc ? placeKey(loc) : null;
-    chips.innerHTML = saved.map(e =>
-      `<button type="button" role="tab" data-key="${esc(e.key)}" aria-current="${e.key === cur}" title="${esc(e.place.label || e.place.name)}">${esc(e.name)}</button>`).join('');
-    chips.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+    const entry = saved.find(e => e.key === cur);
+    $('locPickName').textContent = entry ? entry.name : (loc ? `${loc.name} (not saved)` : 'Saved locations');
+    pick.classList.toggle('unsaved', !entry);
+    menu.innerHTML = saved.map(e =>
+      `<button type="button" role="option" data-key="${esc(e.key)}" aria-selected="${e.key === cur}">
+        <span class="chk">${e.key === cur ? '✓' : ''}</span>
+        <span>${esc(e.name)}${e.name !== e.place.name ? `<small>${esc(e.place.label || e.place.name)}</small>` : ''}</span>
+      </button>`).join('');
+    menu.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+      closeLocMenu();
       const e = saved.find(x => x.key === b.dataset.key);
-      if (!e) return;
-      if (loc && placeKey(loc) === e.key) return;
+      if (!e || (loc && placeKey(loc) === e.key)) return;
       q.value = e.place.label || e.place.name;
       loadForecast(e.place);
     }));
-    const active = chips.querySelector('[aria-current="true"]');
-    if (active && active.scrollIntoView) active.scrollIntoView({ inline: 'nearest', block: 'nearest' });
   }
+  function openLocMenu() { $('locMenu').hidden = false; $('locPick').setAttribute('aria-expanded', 'true'); }
+  function closeLocMenu() { $('locMenu').hidden = true; $('locPick').setAttribute('aria-expanded', 'false'); }
+  $('locPick').addEventListener('click', e => { e.stopPropagation(); $('locMenu').hidden ? openLocMenu() : closeLocMenu(); });
+  document.addEventListener('click', e => { if (!e.target.closest('#savedBar')) closeLocMenu(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLocMenu(); });
   $('saveBtn').addEventListener('click', () => {
     if (!loc) return;
     const key = placeKey(loc);
