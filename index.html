@@ -57,11 +57,11 @@
   }
   .search input::placeholder { color: var(--fg-faint); }
   .search input:focus { border-color: rgba(255,255,255,0.5); background: var(--card-strong); }
-  .search button {
+  .search button[type=submit] {
     border: 0; border-radius: 14px; padding: 0 18px; background: var(--fg); color: #1e3a6e;
     font-weight: 600; cursor: pointer;
   }
-  .search button:active { transform: scale(0.97); }
+  .search button[type=submit]:active { transform: scale(0.97); }
   .suggest {
     position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 10;
     background: #fff; color: #1a2540; border-radius: 14px; overflow: hidden;
@@ -77,12 +77,11 @@
   .suggest button:hover, .suggest button:focus { background: #f2f5fb; }
 
   .toolbar { display: flex; justify-content: space-between; align-items: center; margin: 14px 0 6px; }
-  .toggle {
-    display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden;
-    background: var(--card);
+  .unitBtn {
+    flex: 0 0 48px; border: 1px solid var(--line); border-radius: 14px; background: var(--card);
+    color: var(--fg); font-weight: 700; font-size: 15px; cursor: pointer; padding: 0;
   }
-  .toggle button { border: 0; background: none; padding: 6px 14px; font-size: 13.5px; font-weight: 600; color: var(--fg-dim); cursor: pointer; }
-  .toggle button[aria-pressed="true"] { background: var(--fg); color: #1e3a6e; }
+  .unitBtn:active { transform: scale(0.95); }
   .status { font-size: 13px; color: var(--fg-dim); min-height: 1.2em; }
   .status.error { color: #ffb4a8; }
 
@@ -195,15 +194,12 @@
 <form class="search" id="searchForm" autocomplete="off">
   <input id="q" type="search" inputmode="search" placeholder="City name or zip code" aria-label="City or zip code" enterkeyhint="search">
   <button type="submit" aria-label="Search">Go</button>
+  <button type="button" class="unitBtn" id="unitBtn" aria-label="Toggle temperature unit" title="Tap to switch °F / °C">°F</button>
   <div class="suggest" id="suggest" hidden></div>
 </form>
 
 <div class="toolbar">
   <div class="status" id="status" aria-live="polite"></div>
-  <div class="toggle" role="group" aria-label="Temperature unit">
-    <button type="button" id="unitF" aria-pressed="true">°F</button>
-    <button type="button" id="unitC" aria-pressed="false">°C</button>
-  </div>
 </div>
 
 <div class="saved" id="savedBar" hidden>
@@ -639,14 +635,11 @@
   function setUnit(u) {
     unit = u;
     try { localStorage.setItem('unit', u); } catch (e) {}
-    $('unitF').setAttribute('aria-pressed', u === 'F');
-    $('unitC').setAttribute('aria-pressed', u === 'C');
+    $('unitBtn').textContent = `°${u}`;
     render();
   }
-  $('unitF').addEventListener('click', () => setUnit('F'));
-  $('unitC').addEventListener('click', () => setUnit('C'));
-  $('unitF').setAttribute('aria-pressed', unit === 'F');
-  $('unitC').setAttribute('aria-pressed', unit === 'C');
+  $('unitBtn').addEventListener('click', () => setUnit(unit === 'F' ? 'C' : 'F'));
+  $('unitBtn').textContent = `°${unit}`;
 
   // ---------- Search UI ----------
   const q = $('q'), suggest = $('suggest');
