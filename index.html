@@ -51,6 +51,7 @@
   /* Search */
   .search { display: flex; gap: 8px; position: relative; }
   .search input {
+    -webkit-touch-callout: none;
     flex: 1; border: 1px solid var(--line); background: var(--card);
     border-radius: 14px; padding: 13px 16px; font-size: 16px; outline: none;
     backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
@@ -790,7 +791,7 @@
 
   // ---------- Search UI ----------
   const q = $('q'), suggest = $('suggest');
-  let debounce = null, seq = 0;
+  let debounce = null, seq = 0, placeholderRestore = null;
 
   function savedMatches(v) {
     v = v.trim().toLowerCase();
@@ -817,6 +818,7 @@
   }
   function chooseSaved(e) {
     suggest.hidden = true;
+    placeholderRestore = null; q.placeholder = 'City name or zip code';
     q.value = e.place.label || e.place.name;
     q.blur();
     if (loc && placeKey(loc) === e.key) return;
@@ -824,13 +826,22 @@
   }
   function choose(place) {
     suggest.hidden = true;
+    placeholderRestore = null; q.placeholder = 'City name or zip code';
     q.value = place.label;
     q.blur();
     loadForecast(place);
   }
 
   // Focus: show saved locations right away (priority order); typing filters them and searches the web for the rest
-  q.addEventListener('focus', () => { q.select(); if (saved.length) showSuggestions(savedMatches(''), []); });
+  // On focus: clear the box (current place becomes the placeholder) so typing starts fresh — no text selection,
+  // which would pop up the Copy/Look Up menu on phones and cover the dropdown. Restore on blur if nothing was chosen.
+  q.addEventListener('focus', () => {
+    if (q.value) { placeholderRestore = q.value; q.placeholder = q.value; q.value = ''; }
+    if (saved.length) showSuggestions(savedMatches(''), []);
+  });
+  q.addEventListener('blur', () => {
+    setTimeout(() => { if (!q.value && placeholderRestore) { q.value = placeholderRestore; q.placeholder = 'City name or zip code'; } placeholderRestore = null; }, 150);
+  });
   q.addEventListener('input', () => {
     clearTimeout(debounce);
     const v = q.value.trim();
