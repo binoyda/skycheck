@@ -118,6 +118,14 @@
   .stat .k { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--fg-faint); }
   .stat .v { font-size: 16px; font-weight: 600; margin-top: 3px; font-variant-numeric: tabular-nums; }
 
+  /* Weather alert banner */
+  .alert { display: flex; align-items: center; gap: 12px; margin-top: 14px; padding: 12px 14px; border-radius: var(--radius); border: 1px solid rgba(255,212,82,0.55); background: rgba(255,212,82,0.16); }
+  .alert.storm { border-color: rgba(255,138,138,0.6); background: rgba(255,107,107,0.2); }
+  .alert.snow { border-color: rgba(190,225,255,0.6); background: rgba(160,205,255,0.2); }
+  .alertIcon { font-size: 30px; line-height: 1; }
+  .alertTitle { font-weight: 600; font-size: 15px; }
+  .alertSub { font-size: 13px; color: var(--fg-dim); margin-top: 2px; }
+
   /* Sections */
   section.card {
     background: var(--card); border-radius: var(--radius); margin-top: 14px; padding: 14px 0 6px;
@@ -197,6 +205,8 @@
   .seg { display: inline-flex; border: 1px solid #d5dae6; border-radius: 999px; overflow: hidden; background: #f7f8fb; flex: 0 0 auto; }
   .seg button { border: 0; background: none; padding: 8px 16px; font-size: 14px; font-weight: 600; color: #6b7690; cursor: pointer; }
   .seg button[aria-pressed="true"] { background: #1e4a8c; color: #fff; }
+  .segBtn { border: 1px solid #d5dae6; border-radius: 999px; background: #f7f8fb; padding: 8px 16px; font-size: 14px; font-weight: 600; color: #1e4a8c; cursor: pointer; flex: 0 0 auto; }
+  .segBtn[disabled] { color: #6b7690; background: #eef0f4; cursor: default; }
   .setHead { margin: 6px 0 2px; font-size: 15px; font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
   .setHead small { font-size: 12.5px; color: #6b7690; font-weight: 400; }
   .sheet p.hint { margin: 0 0 12px; font-size: 13px; color: #6b7690; }
@@ -273,6 +283,11 @@
     </div>
   </div>
 
+  <div class="alert" id="alert" hidden role="status">
+    <div class="alertIcon" id="alertIcon"></div>
+    <div class="alertBody"><div class="alertTitle" id="alertTitle"></div><div class="alertSub" id="alertSub"></div></div>
+  </div>
+
   <section class="card">
     <h2>⏱ Hourly · next 48 hours</h2>
     <div class="hourly" id="hourly"></div>
@@ -302,6 +317,10 @@
         <button type="button" id="segF" aria-pressed="true">°F</button>
         <button type="button" id="segC" aria-pressed="false">°C</button>
       </div>
+    </div>
+    <div class="setRow">
+      <div><div class="setLabel">Weather alerts</div><div class="setSub" id="notifSub">Banner in the app for rain, storms, or snow in the next 24h. Turn on to also get a phone notification when the app checks the forecast.</div></div>
+      <button type="button" class="segBtn" id="notifBtn">Enable</button>
     </div>
     <h4 class="setHead">Saved locations <small id="sheetCount"></small></h4>
     <p class="hint">Rename, reorder, or remove. Changes save automatically.</p>
@@ -517,6 +536,60 @@
     const km = m / 1000; return km >= 9.95 ? `${Math.round(km)} km` : `${km.toFixed(1)} km`;
   };
 
+  // ---------- Precipitation alert (next 24 hours) ----------
+  const ALERT_HOURS = 24;
+  const kindOf = code => (code >= 95 ? 'storm' : (code >= 71 && code <= 77) || code === 85 || code === 86 ? 'snow' : code >= 51 ? 'rain' : null);
+  const KIND_LABEL = { storm: ['⛈️', 'Thunderstorm'], snow: ['🌨️', 'Snow'], rain: ['🌧️', 'Rain'] };
+  function upcomingEvent() {
+    const h = data.hourly, nowKey = localNowKey();
+    let start = h.time.findIndex(t => t.slice(0, 13) >= nowKey);
+    if (start < 0) return null;
+    const end = Math.min(start + ALERT_HOURS, h.time.length);
+    // pick the most severe kind in the window, and its first hour
+    const rank = { storm: 3, snow: 2, rain: 1 };
+    let best = null;
+    for (let i = start; i < end; i++) {
+      const k = kindOf(h.weather_code[i]);
+      const pp = h.precipitation_probability[i];
+      if (!k || (pp != null && pp < 30)) continue;      // ignore very low-probability hours
+      if (!best || rank[k] > rank[best.kind]) {
+        // find run length for this kind from i
+        let j = i; while (j < end && kindOf(h.weather_code[j]) === k) j++;
+        best = { kind: k, i, hours: j - i, pp: Math.max(...h.precipitation_probability.slice(i, j).map(x => x || 0)), isNow: i === start };
+      }
+    }
+    return best;
+  }
+  function renderAlert() {
+    const el = $('alert');
+    const ev = upcomingEvent();
+    if (!ev) { el.hidden = true; return; }
+    const t = parseLocal(data.hourly.time[ev.i]);
+    const [icon, label] = KIND_LABEL[ev.kind];
+    const todayKey = localNowKey().slice(0, 10);
+    const when = ev.isNow ? 'now' : `${t.key === todayKey ? 'today' : 'tomorrow'} around ${hour12(t.hh)}`;
+    $('alertIcon').textContent = icon;
+    $('alertTitle').textContent = `${label} ${ev.isNow ? 'happening now' : 'expected ' + when}`;
+    $('alertSub').textContent = `${ev.hours >= 2 ? `About ${ev.hours} hours` : 'About an hour'} · up to ${ev.pp}% chance`;
+    el.className = 'alert ' + ev.kind;
+    el.hidden = false;
+    notifyIfNew(ev, label, when);
+  }
+  // Optional phone notification while the app is open/refreshing (needs permission; one per event per location)
+  function notifyIfNew(ev, label, when) {
+    if (!('Notification' in window) || Notification.permission !== 'granted' || !loc) return;
+    const key = `${placeKey(loc)}|${data.hourly.time[ev.i]}|${ev.kind}`;
+    let sent = []; try { sent = JSON.parse(localStorage.getItem('notified') || '[]'); } catch (e) {}
+    if (sent.includes(key)) return;
+    sent = sent.slice(-30).concat(key); try { localStorage.setItem('notified', JSON.stringify(sent)); } catch (e) {}
+    const title = `${label} ${ev.isNow ? 'now' : when} — ${loc.name}`;
+    const body = `${ev.hours >= 2 ? `About ${ev.hours} hours` : 'About an hour'}, up to ${ev.pp}% chance.`;
+    try {
+      if (navigator.serviceWorker && navigator.serviceWorker.ready) navigator.serviceWorker.ready.then(r => r.showNotification(title, { body, icon: 'icon-192.png', tag: key }));
+      else new Notification(title, { body, icon: 'icon-192.png' });
+    } catch (e) {}
+  }
+
   // ---------- Render ----------
   function render() {
     if (!data) return;
@@ -546,6 +619,7 @@
 
     renderHourly();
     renderDaily();
+    renderAlert();
 
     const sr = parseLocal(data.daily.sunrise[0]), ss = parseLocal(data.daily.sunset[0]);
     $('sunrise').textContent = clock12(sr.hh, sr.mm);
@@ -771,6 +845,19 @@
     }
   }
   $('gearBtn').addEventListener('click', openSheet);
+  function renderNotifBtn() {
+    const b = $('notifBtn');
+    if (!('Notification' in window)) { b.textContent = 'Not supported'; b.disabled = true; return; }
+    const p = Notification.permission;
+    b.textContent = p === 'granted' ? 'On' : p === 'denied' ? 'Blocked' : 'Enable';
+    b.disabled = p !== 'default';
+    if (p === 'denied') $('notifSub').textContent = 'Notifications are blocked for this app in your phone settings.';
+  }
+  $('notifBtn').addEventListener('click', async () => {
+    try { await Notification.requestPermission(); } catch (e) {}
+    renderNotifBtn(); if (data) renderAlert();
+  });
+  renderNotifBtn();
   $('sheetDone').addEventListener('click', closeSheet);
   sheetWrap.addEventListener('click', e => { if (e.target === sheetWrap) closeSheet(); });
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && !sheetWrap.hidden) closeSheet(); });
@@ -886,7 +973,7 @@
   function refreshIfStale() {
     if (!loc) return;
     if (Date.now() - lastLoad > STALE_MS) { loadForecast(loc); return; }
-    if (data && localNowKey() !== lastHourKey) { lastHourKey = localNowKey(); renderHourly(); renderDaily(); $('sVis').textContent = fmtVis(currentVisibility()); }
+    if (data && localNowKey() !== lastHourKey) { lastHourKey = localNowKey(); renderHourly(); renderDaily(); renderAlert(); $('sVis').textContent = fmtVis(currentVisibility()); }
   }
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') refreshIfStale(); });
   window.addEventListener('focus', refreshIfStale);
